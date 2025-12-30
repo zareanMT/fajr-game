@@ -9,35 +9,56 @@
     #message { font-size: 28px; margin: 20px; font-weight: bold; color: darkgreen; }
     #score { font-size: 24px; margin: 10px; }
     .images { display: flex; justify-content: center; gap: 30px; margin-top: 30px; }
-    .images img { width: 200px; height: 200px; cursor: pointer; border: 4px solid transparent; transition: transform 0.3s, border 0.3s; }
-    .images img:hover { transform: scale(1.1); border: 4px solid #555; }
+    .card { position: relative; width: 200px; }
+    .card img { width: 200px; height: 200px; cursor: pointer; border: 4px solid transparent; transition: transform 0.3s, border 0.3s; }
+    .card img:hover { transform: scale(1.05); border: 4px solid #555; }
+    .badge { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #fff; border: 2px solid #333; border-radius: 16px; padding: 2px 8px; font-size: 14px; }
+    .badge.safe { border-color: #1b5e20; color: #1b5e20; }
+    .badge.danger { border-color: #b71c1c; color: #b71c1c; }
     .hearts { font-size: 40px; color: red; }
     .error { color:#b00020; font-size:16px; margin-top:10px; }
+    .hint { font-size: 14px; color: #555; margin-top: 10px; }
+    button { padding: 8px 16px; font-size: 16px; }
   </style>
 </head>
 <body>
   <h1>محدوده ها برای امنیت و سلامت</h1>
   <div id="message">بازی را شروع کن</div>
   <div id="score">امتیاز: 0</div>
-  <button onclick="nextRound()">شروع دور جدید</button>
+  <button id="nextBtn" onclick="nextRound()">شروع دور جدید</button>
+
   <div class="images">
-    <img id="img1" alt="گزینه ۱" onclick="checkAnswer(1)">
-    <img id="img2" alt="گزینه ۲" onclick="checkAnswer(2)">
+    <div class="card">
+      <div id="badge1" class="badge">...</div>
+      <img id="img1" alt="گزینه ۱" onclick="checkAnswer(1)">
+    </div>
+    <div class="card">
+      <div id="badge2" class="badge">...</div>
+      <img id="img2" alt="گزینه ۲" onclick="checkAnswer(2)">
+    </div>
   </div>
+
   <div id="final"></div>
   <div id="errors" class="error"></div>
+  <div id="hint" class="hint"></div>
 
 <script>
   let score = 0;
   let targetCategory = null; // "safe" یا "danger"
+  let roundLocked = false;
 
   const safeImages = ["safe1.jpg","safe2.jpg","safe3.jpg","safe4.jpg","safe5.jpg"];
   const dangerImages = ["danger1.jpg","danger2.jpg","danger3.jpg","danger4.jpg","danger5.jpg"];
 
   const img1 = document.getElementById("img1");
   const img2 = document.getElementById("img2");
+  const badge1 = document.getElementById("badge1");
+  const badge2 = document.getElementById("badge2");
+  const messageEl = document.getElementById("message");
+  const hintEl = document.getElementById("hint");
+  const nextBtn = document.getElementById("nextBtn");
 
-  // گزارش خطای بارگذاری تصویر برای عیب‌یابی
+  // گزارش خطاهای بارگذاری
   [img1, img2].forEach((img, i) => {
     img.onerror = () => {
       const msg = `بارگذاری تصویر ${i+1} ناکام ماند: ${img.src}`;
@@ -46,56 +67,72 @@
     };
   });
 
-  function nextRound() {
-    document.body.style.backgroundColor = "#f0f0f0";
-    document.getElementById("final").innerHTML = "";
-    document.getElementById("errors").textContent = "";
+  function setBadge(badgeEl, category) {
+    badgeEl.textContent = category === "safe" ? "امن" : "خطرناک";
+    badgeEl.className = "badge " + (category === "safe" ? "safe" : "danger");
+  }
 
-    // وظیفه‌ی این دور: انتخاب تصویر امن یا خطرناک
+  function nextRound() {
+    roundLocked = false;
+    document.body.style.backgroundColor = "#f0f0f0";
+    document.getElementById("final").textContent = "";
+    document.getElementById("errors").textContent = "";
+    messageEl.className = "";
+    hintEl.textContent = "";
+    nextBtn.disabled = true; // جلوگیری از دوبار شروع
+
+    // وظیفه این دور
     targetCategory = Math.random() < 0.5 ? "safe" : "danger";
-    document.getElementById("message").textContent =
-      targetCategory === "safe" ? "تصویر امن را انتخاب کن!" : "تصویر خطرناک را انتخاب کن!";
+    messageEl.textContent = targetCategory === "safe" ? "تصویر امن را انتخاب کن!" : "تصویر خطرناک را انتخاب کن!";
 
     // انتخاب تصادفی تصاویر
     const safeImg = safeImages[Math.floor(Math.random() * safeImages.length)];
     const dangerImg = dangerImages[Math.floor(Math.random() * dangerImages.length)];
 
-    // جای‌گذاری تصادفی: امن چپ یا راست
+    // جای‌گذاری تصادفی
     const safeOnLeft = Math.random() < 0.5;
     if (safeOnLeft) {
-      img1.src = safeImg; img1.dataset.category = "safe";
-      img2.src = dangerImg; img2.dataset.category = "danger";
+      img1.src = safeImg; img1.dataset.category = "safe"; img1.alt = "تصویر امن";
+      img2.src = dangerImg; img2.dataset.category = "danger"; img2.alt = "تصویر خطرناک";
+      setBadge(badge1, "safe");
+      setBadge(badge2, "danger");
     } else {
-      img1.src = dangerImg; img1.dataset.category = "danger";
-      img2.src = safeImg; img2.dataset.category = "safe";
+      img1.src = dangerImg; img1.dataset.category = "danger"; img1.alt = "تصویر خطرناک";
+      img2.src = safeImg; img2.dataset.category = "safe"; img2.alt = "تصویر امن";
+      setBadge(badge1, "danger");
+      setBadge(badge2, "safe");
     }
+
+    // راهنمای کوتاه برای دانش‌آموز
+    hintEl.textContent = targetCategory === "safe"
+      ? "به رفتارهای سالم مثل مسواک زدن، همکاری و رعایت بهداشت توجه کن."
+      : "رفتارهای خطرناک مثل دعوا، بی‌احتیاطی یا بی‌احترامی را پیدا کن.";
   }
 
   function checkAnswer(choice) {
+    if (roundLocked) return;
+    roundLocked = true;
+
     const chosenImg = (choice === 1) ? img1 : img2;
     const chosenCategory = chosenImg.dataset.category;
 
     if (chosenCategory === targetCategory) {
       score += 20;
       document.body.style.backgroundColor = "lightgreen";
-      document.getElementById("message").innerHTML = "آفرین بر فرزند باهوشم ❤️❤️❤️";
-      document.getElementById("message").className = "hearts";
+      messageEl.innerHTML = "آفرین بر فرزند باهوشم ❤️❤️❤️";
+      messageEl.className = "hearts";
+      document.getElementById("final").textContent = score >= 100 ? "تو معرکه ای 🎉" : "عالی بود! ادامه بده.";
     } else {
       document.body.style.backgroundColor = "red";
-      document.getElementById("message").textContent = "اشتباه کردی مراقب باش!";
-      document.getElementById("message").className = "";
+      messageEl.textContent = "اشتباه کردی مراقب باش!";
+      messageEl.className = "";
+      document.getElementById("final").textContent = "بیشتر مراقب محدوده ها باش!";
     }
 
     document.getElementById("score").textContent = "امتیاز: " + score;
-
-    if (score >= 100) {
-      document.getElementById("final").textContent = "تو معرکه ای 🎉";
-    } else if (score > 0) {
-      document.getElementById("final").textContent = "بیشتر مراقب محدوده ها باش!";
-    }
+    nextBtn.disabled = false; // اجازه شروع دور بعد
   }
 
-  // شروع خودکار اولین دور
   window.addEventListener("DOMContentLoaded", nextRound);
 </script>
 </body>
