@@ -4,48 +4,15 @@
   <meta charset="UTF-8">
   <title>محدوده ها برای امنیت و سلامت</title>
   <style>
-    body {
-      font-family: Tahoma, sans-serif;
-      text-align: center;
-      background-color: #f0f0f0;
-      transition: background-color 0.5s;
-    }
-    h1 {
-      font-size: 40px;
-      color: darkblue;
-      margin-top: 20px;
-    }
-    #message {
-      font-size: 28px;
-      margin: 20px;
-      font-weight: bold;
-      color: darkgreen;
-    }
-    #score {
-      font-size: 24px;
-      margin: 10px;
-    }
-    .images {
-      display: flex;
-      justify-content: center;
-      gap: 30px;
-      margin-top: 30px;
-    }
-    .images img {
-      width: 200px;
-      height: 200px;
-      cursor: pointer;
-      border: 4px solid transparent;
-      transition: transform 0.3s, border 0.3s;
-    }
-    .images img:hover {
-      transform: scale(1.1);
-      border: 4px solid #555;
-    }
-    .hearts {
-      font-size: 40px;
-      color: red;
-    }
+    body { font-family: Tahoma, sans-serif; text-align: center; background-color: #f0f0f0; transition: background-color 0.5s; }
+    h1 { font-size: 40px; color: darkblue; margin-top: 20px; }
+    #message { font-size: 28px; margin: 20px; font-weight: bold; color: darkgreen; }
+    #score { font-size: 24px; margin: 10px; }
+    .images { display: flex; justify-content: center; gap: 30px; margin-top: 30px; }
+    .images img { width: 200px; height: 200px; cursor: pointer; border: 4px solid transparent; transition: transform 0.3s, border 0.3s; }
+    .images img:hover { transform: scale(1.1); border: 4px solid #555; }
+    .hearts { font-size: 40px; color: red; }
+    .error { color:#b00020; font-size:16px; margin-top:10px; }
   </style>
 </head>
 <body>
@@ -54,64 +21,77 @@
   <div id="score">امتیاز: 0</div>
   <button onclick="nextRound()">شروع دور جدید</button>
   <div class="images">
-    <img id="img1" onclick="checkAnswer(1)">
-    <img id="img2" onclick="checkAnswer(2)">
+    <img id="img1" alt="گزینه ۱" onclick="checkAnswer(1)">
+    <img id="img2" alt="گزینه ۲" onclick="checkAnswer(2)">
   </div>
   <div id="final"></div>
+  <div id="errors" class="error"></div>
 
 <script>
   let score = 0;
-  let correctChoice = null;
+  let targetCategory = null; // "safe" یا "danger"
 
-  const safeImages = [
-    "safe1.jpg","safe2.jpg","safe3.jpg","safe4.jpg","safe5.jpg"
-  ];
-  const dangerImages = [
-    "danger1.jpg","danger2.jpg","danger3.jpg","danger4.jpg","danger5.jpg"
-  ];
+  const safeImages = ["safe1.jpg","safe2.jpg","safe3.jpg","safe4.jpg","safe5.jpg"];
+  const dangerImages = ["danger1.jpg","danger2.jpg","danger3.jpg","danger4.jpg","danger5.jpg"];
+
+  const img1 = document.getElementById("img1");
+  const img2 = document.getElementById("img2");
+
+  // گزارش خطای بارگذاری تصویر برای عیب‌یابی
+  [img1, img2].forEach((img, i) => {
+    img.onerror = () => {
+      const msg = `بارگذاری تصویر ${i+1} ناکام ماند: ${img.src}`;
+      console.error(msg);
+      document.getElementById("errors").textContent = msg + " (نام فایل یا مسیر را بررسی کن)";
+    };
+  });
 
   function nextRound() {
     document.body.style.backgroundColor = "#f0f0f0";
-    document.getElementById("message").innerHTML = "تصویر درست را انتخاب کن!";
     document.getElementById("final").innerHTML = "";
+    document.getElementById("errors").textContent = "";
 
-    let option = Math.random() < 0.5 ? "safe" : "danger";
-    correctChoice = option;
+    // وظیفه‌ی این دور: انتخاب تصویر امن یا خطرناک
+    targetCategory = Math.random() < 0.5 ? "safe" : "danger";
+    document.getElementById("message").textContent =
+      targetCategory === "safe" ? "تصویر امن را انتخاب کن!" : "تصویر خطرناک را انتخاب کن!";
 
-    let safeImg = safeImages[Math.floor(Math.random()*safeImages.length)];
-    let dangerImg = dangerImages[Math.floor(Math.random()*dangerImages.length)];
+    // انتخاب تصادفی تصاویر
+    const safeImg = safeImages[Math.floor(Math.random() * safeImages.length)];
+    const dangerImg = dangerImages[Math.floor(Math.random() * dangerImages.length)];
 
-    if(option === "safe"){
-      document.getElementById("img1").src = safeImg;
-      document.getElementById("img2").src = dangerImg;
+    // جای‌گذاری تصادفی: امن چپ یا راست
+    const safeOnLeft = Math.random() < 0.5;
+    if (safeOnLeft) {
+      img1.src = safeImg; img1.dataset.category = "safe";
+      img2.src = dangerImg; img2.dataset.category = "danger";
     } else {
-      document.getElementById("img1").src = dangerImg;
-      document.getElementById("img2").src = safeImg;
+      img1.src = dangerImg; img1.dataset.category = "danger";
+      img2.src = safeImg; img2.dataset.category = "safe";
     }
   }
 
-  function checkAnswer(choice){
-    let chosen = (choice === 1) ? document.getElementById("img1").src : document.getElementById("img2").src;
-    let isSafe = safeImages.some(img => chosen.endsWith(img));
-    let isDanger = dangerImages.some(img => chosen.endsWith(img));
+  function checkAnswer(choice) {
+    const chosenImg = (choice === 1) ? img1 : img2;
+    const chosenCategory = chosenImg.dataset.category;
 
-    if((correctChoice==="safe" && isSafe) || (correctChoice==="danger" && isDanger)){
+    if (chosenCategory === targetCategory) {
       score += 20;
       document.body.style.backgroundColor = "lightgreen";
       document.getElementById("message").innerHTML = "آفرین بر فرزند باهوشم ❤️❤️❤️";
       document.getElementById("message").className = "hearts";
     } else {
       document.body.style.backgroundColor = "red";
-      document.getElementById("message").innerHTML = "اشتباه کردی مراقب باش!";
+      document.getElementById("message").textContent = "اشتباه کردی مراقب باش!";
       document.getElementById("message").className = "";
     }
 
-    document.getElementById("score").innerHTML = "امتیاز: " + score;
+    document.getElementById("score").textContent = "امتیاز: " + score;
 
-    if(score >= 100){
-      document.getElementById("final").innerHTML = "تو معرکه ای 🎉";
-    } else if(score > 0){
-      document.getElementById("final").innerHTML = "بیشتر مراقب محدوده ها باش!";
+    if (score >= 100) {
+      document.getElementById("final").textContent = "تو معرکه ای 🎉";
+    } else if (score > 0) {
+      document.getElementById("final").textContent = "بیشتر مراقب محدوده ها باش!";
     }
   }
 
